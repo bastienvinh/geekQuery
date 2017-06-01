@@ -1,0 +1,31 @@
+{
+  "name": "com.strife.geekquery",
+  "version": "1.0.3",
+  "description": "Personal custom made library to manipulate Dom elements, utilities for Javascript",
+  "main": "js/gQ.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bastienvinh/geekQuery.git"
+  },
+  "keywords": [
+    "geekQuery",
+    "utilities",
+    "dom",
+    "elements",
+    "javascript"
+  ],
+  "author": "Bastien VINH",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bastienvinh/geekQuery/issues"
+  },
+  "homepage": "https://github.com/bastienvinh/geekQuery#readme",
+  "dependencies": {},
+  "devDependencies": {
+    "browser-sync": "^2.18.12",
+    "gulp": "^3.9.1"
+  }
+}
