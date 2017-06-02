@@ -5,12 +5,11 @@
   let version = 1.0003;
   let doc = scope.document;
   var q;
-  var tempScriptQueue = new Array();
+  var scriptQueues = new Array();
+  var loadQueues = new Array();
 
-  let gQ = (selector, context = doc) => {
-    console.log('Should happen after');
-    return q.query(selector, context);
-  }
+  // Constructor
+  let gQ = (selector, context = doc) => q.query(selector, context);
 
   // Array extensions
   // Remove the current Value in array
@@ -38,6 +37,22 @@
     }
   });
 
+  Object.defineProperty(Array.prototype, 'isEmpty', {
+    enumerable: false,
+    configurable: false,
+    get: function() {
+      return this.length === 0;
+    }
+  });
+
+  Object.defineProperty(Array.prototype, 'hasItems', {
+    enumerable: false,
+    configurable: false,
+    get: function() {
+      return this.length > 0;
+    }
+  })
+
   gQ.uniqueId = (prefix = '') => {
     let now  = new Date();
     let months = now.getUTCMonth() < 10 ? `0${now.getUTCMonth()}` : now.geMonth().toString();
@@ -49,48 +64,36 @@
   }
 
   gQ.loadJs = (path, callback) => {
-    loadScriptReady = false;
-
-    var js = doc.createElement('script');
+    let id = gQ.uniqueId('script-');
+    let js = doc.createElement('script');
         js.src = path;
         js.type = 'text/javascript';
-        js.async = false;
         js.defer = true;
         js.onload = js.onreadystatechange = null;
+        js.dataset['identifier'] = id;
 
     if (callback) {
-      js.onload = this.onload = callback;
-
-      js.onreadystatechange = function () {
-        if (this.readState == 'complete' && this.onload) {
-          this.onload();
-        }
+      js.onload = callback;
+      js.onload = function() {
+        scriptQueues.removeValue(id);
+        callback();
       }
     }
 
-    // That will place the element after
+    // That will place our scripts in the queues
+    scriptQueues.push(id);
     doc.body.insertBefore(js, doc.body.firstChild);
-    // tempScriptQueue.push({})
   }
 
   gQ.ready = (fun) => {
-    let last = scope.onload;
-    let isReady = false;
-
-    if (doc.addEventListener) {
-      doc.addEventListener('DOMContentLoaded', function () {
-        isReady = true;
-      });
+    function waitingReady() {
+      if (scriptQueues.hasItems)
+        setTimeout(waitingReady, 1);
+      else
+        fun();
     }
 
-    scope.onload = function() {
-      if (last) last();
-      if (isReady) fun();
-    }
-
-    scope.addEventListener('load', function () {
-      fun();
-    });
+    scope.addEventListener('load', waitingReady);
   }
 
   // Define a version properties for qQ (Read-only property)
@@ -137,29 +140,8 @@
     // TODO : create a event binding
   }
 
-  gQ.ready( () => {
-    q = new NativeQuery();
-
-    gQ.start();
-
-    if (isNot(false && q && q.query && q.query('html:first-of-type'))) {
-      //- ... TODO : load sizzle libs, it's not working because the script is loaded to late
-      
-      if ('jQuery' in scope) {
-        // - ...
-      } else {
-        gQ.loadJs('js/sizzle.min.js', () => {
-          console.log('Should happen before.');
-          q = new SizzleAdapter(Sizzle);
-        });
-      }
-
-    };
-  });
-
   class NativeQuery {
     query(selector, context = doc) {
-      // TODO : improve this code
       return context.querySelectorAll.call(context, selector);
     }
   }
@@ -183,13 +165,29 @@
     }
   }
 
+  gQ.ready( () => {
+    q = new NativeQuery();
+
+    gQ.start();
+
+    if (isNot(q && q.query && q.query('html:first-of-type'))) {
+      if ('jQuery' in scope) {
+        gQ.loadJs('js/jquery.min.js', () => {
+          q = new JQueryAdapter(jQuery);
+        });  
+      } 
+      else {
+        gQ.loadJs('js/sizzle.min.js', () => {
+          q = new SizzleAdapter(Sizzle);
+        });
+      }
+    };
+  });
+
+  
+
 } (window, true));
 
-// gQ.ready(() => {
-//   console.log(gQ('article', document.getElementsByClassName('articles')[0]));
-//   var test = new Array();
-//   test.push(4);
-//   test.push(23);
-//   test.push(54);
-//   console.log(test.last);
-// });
+gQ.ready(() => {
+  console.log(gQ('article', document.getElementsByClassName('articles')[0]));
+});
