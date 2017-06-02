@@ -7,7 +7,6 @@
   var q;
 
   let gQ = (selector, context = doc) => {
-    console.log('Hero 2');
     return q.query(selector, context);
   }
 
@@ -15,19 +14,23 @@
     var js = doc.createElement('script');
         js.src = path;
         js.type = 'text/javascript';
+        js.defer = true;
+        js.onload = js.onreadystatechange = null;
 
     if (callback) {
       js.onload = callback;
-      this.onload = this.onreadystatechange = null;
-    }
-
-    js.onactivate = function () {
-      if (this.readState == 'complete' && this.onload) {
-        this.onload();
+      
+      js.onreadystatechange = function () {
+        if (this.readState == 'complete' && this.onload) {
+          this.onload();
+        }
       }
     }
 
-    doc.getElementsByTagName('head')[0].appendChild(js);
+    
+
+    // That will place the element after
+    doc.body.insertBefore(js, doc.body.firstChild);
   }
 
   gQ.ready = (fun) => {
@@ -91,10 +94,9 @@
 
     gQ.start();
 
-    if (isNot(false && q && q.query && q.query('html:first-of-type'))) {
-      //- ... TODO : load sizzle libs
+    if (isNot(q && q.query && q.query('html:first-of-type'))) {
+      //- ... TODO : load sizzle libs, it's not working because the script is loaded to late
       gQ.loadJs('js/sizzle.min.js', () => {
-        console.log('Hero 1');
         q = new SizzleAdapter(Sizzle);
       });
     };
