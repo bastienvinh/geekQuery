@@ -4,11 +4,11 @@
 (function (scope, overwrite = false) {
   let version = 1.0003;
   let doc = window.document;
-  let q;
-  let qSingle;
+  var q;
 
-  var gQ = (selector, context) => {
-    return q.call(doc, selector);
+  let gQ = (selector, context = doc) => {
+    console.log('Hero 2');
+    return q.query(selector, context);
   }
 
   gQ.loadJs = (path, callback) => {
@@ -21,7 +21,7 @@
       this.onload = this.onreadystatechange = null;
     }
 
-    js.onreadystatechange = function () {
+    js.onactivate = function () {
       if (this.readState == 'complete' && this.onload) {
         this.onload();
       }
@@ -31,8 +31,8 @@
   }
 
   gQ.ready = (fun) => {
-    var last = window.onload;
-    var isReady = false;
+    let last = window.onload;
+    let isReady = false;
 
     if (doc.addEventListener) {
       doc.addEventListener('DOMContentLoaded', function () {
@@ -57,19 +57,23 @@
     if (!statement) callback();
   }
 
-  // qQ.isFunction = (name) => {
-  //   return window.get('')
-  // }
+  gQ.isNot = (statement) => !(statement);
+
+  // Rewrite code diretly to windows to be more clear
+  // TODO : manage case windows is not the root
+  window.isNot = gQ.isNot;
+  window.whenSomethingIn = gQ.whenSomethingIn;
+  window.whenSomethingNotIn = gQ.whenSomethingNotIn;
 
   let canSupportBrowserVersion = () => {
     // TODO : browser version sniffing
     return true;
-  }
+  };
 
   let canSupport = () => {
     // TODO : verify that the code work with html 5 features and old browser are not here
     return canSupportBrowserVersion();
-  }
+  };
 
   // Don't need to throw error
   // Load the code once or overwrite old version
@@ -83,26 +87,38 @@
   }
 
   gQ.ready( () => {
-    q = doc.querySelectorAll;
-    qSingle = doc.querySelector;
+    q = new NativeQuery();
 
     gQ.start();
 
-    if (q && q.qSingle && q.qSingle.call(doc, 'html:first-of-type')) {
+    if (isNot(false && q && q.query && q.query('html:first-of-type'))) {
       //- ... TODO : load sizzle libs
+      gQ.loadJs('js/sizzle.min.js', () => {
+        console.log('Hero 1');
+        q = new SizzleAdapter(Sizzle);
+      });
     };
   });
 
-  NativeQuery = function() {};
-  NativeQuery.prototype.query = (selector, context) => {
-    context = context || doc;
-
+  class NativeQuery {
+    query(selector, context = doc) {
+      // TODO : improve this code
+      return context.querySelectorAll.call(context, selector);
+    }
   }
 
+  class SizzleAdapter {
+    constructor(lib) {
+      this.lib = lib;
+    }
+    query(selector, context = doc) {
+      return this.lib(selector, context);
+    }
+  }
 
 } (window, true));
 
 gQ.ready(() => {
-  console.log(gQ('body'));
+  console.log(gQ('article', document.getElementsByClassName('articles')[0]));
 });
 
