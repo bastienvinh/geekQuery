@@ -3,23 +3,61 @@
 
 (function (scope, overwrite = false) {
   let version = 1.0003;
-  let doc = window.document;
+  let doc = scope.document;
   var q;
+  var tempScriptQueue = new Array();
 
   let gQ = (selector, context = doc) => {
+    console.log('Should happen after');
     return q.query(selector, context);
   }
 
+  // Array extensions
+  Array.prototype.removeValue = function (value) {
+    let indexOfElement = this.indexOf(value);
+    this.splice(indexOfElement, 1);
+    return this;
+  }
+
+  Object.defineProperty(Array.prototype, 'first', {
+    enumerable: false,
+    configurable: false,
+    get: function() {
+      return this[0];
+    }
+  });
+
+  Object.defineProperty(Array.prototype, 'last', {
+    enumerable: false,
+    configurable: false,
+    get: function() {
+      return this[this.length - 1];
+    }
+  });
+
+  gQ.uniqueId = (prefix = '') => {
+    let now  = new Date();
+    let months = now.getUTCMonth() < 10 ? `0${now.getUTCMonth()}` : now.geMonth().toString();
+    let day = now.getDay() < 10 ? `0${now.getDay()}` : now.getDay().toString();
+    let seconds = now.getSeconds();
+    seconds = seconds < 10 ? `0${seconds}` : seconds.toString();
+    let defaultNumber = Math.floor(Math.random(1, 100) * 100);
+    return `${prefix}${now.getFullYear()}${months}${day}${seconds}${defaultNumber}`;
+  }
+
   gQ.loadJs = (path, callback) => {
+    loadScriptReady = false;
+
     var js = doc.createElement('script');
         js.src = path;
         js.type = 'text/javascript';
+        js.async = false;
         js.defer = true;
         js.onload = js.onreadystatechange = null;
 
     if (callback) {
-      js.onload = callback;
-      
+      js.onload = this.onload = callback;
+
       js.onreadystatechange = function () {
         if (this.readState == 'complete' && this.onload) {
           this.onload();
@@ -27,14 +65,13 @@
       }
     }
 
-    
-
     // That will place the element after
     doc.body.insertBefore(js, doc.body.firstChild);
+    // tempScriptQueue.push({})
   }
 
   gQ.ready = (fun) => {
-    let last = window.onload;
+    let last = scope.onload;
     let isReady = false;
 
     if (doc.addEventListener) {
@@ -43,10 +80,14 @@
       });
     }
 
-    window.onload = function() {
+    scope.onload = function() {
       if (last) last();
       if (isReady) fun();
     }
+
+    scope.addEventListener('load', function () {
+      fun();
+    });
   }
 
   /** Return version of the script */
@@ -80,8 +121,8 @@
 
   // Don't need to throw error
   // Load the code once or overwrite old version
-  if (!window.gQ || (overwrite && window.gQ.version && window.gQ.version() < version)) {
-    window.gQ = gQ;
+  if (!scope.gQ || (overwrite && scope.gQ.version && scope.gQ.version() < version)) {
+    scope.gQ = gQ;
   }
 
   gQ.start = () => {
@@ -94,11 +135,18 @@
 
     gQ.start();
 
-    if (isNot(q && q.query && q.query('html:first-of-type'))) {
+    if (isNot(false && q && q.query && q.query('html:first-of-type'))) {
       //- ... TODO : load sizzle libs, it's not working because the script is loaded to late
-      gQ.loadJs('js/sizzle.min.js', () => {
-        q = new SizzleAdapter(Sizzle);
-      });
+      
+      if ('jQuery' in scope) {
+        // - ...
+      } else {
+        gQ.loadJs('js/sizzle.min.js', () => {
+          console.log('Should happen before.');
+          q = new SizzleAdapter(Sizzle);
+        });
+      }
+
     };
   });
 
@@ -118,9 +166,23 @@
     }
   }
 
+
+  class JQueryAdapter {
+    constructor(lib) {
+      this.lib = lib;
+    }
+    query(selector, context = doc) {
+      return this.lib(selector, context).get();
+    }
+  }
+
 } (window, true));
 
-gQ.ready(() => {
-  console.log(gQ('article', document.getElementsByClassName('articles')[0]));
-});
-
+// gQ.ready(() => {
+//   console.log(gQ('article', document.getElementsByClassName('articles')[0]));
+//   var test = new Array();
+//   test.push(4);
+//   test.push(23);
+//   test.push(54);
+//   console.log(test.last);
+// });
