@@ -13,12 +13,14 @@
   }
 
   // Array extensions
+  // Remove the current Value in array
   Array.prototype.removeValue = function (value) {
     let indexOfElement = this.indexOf(value);
     this.splice(indexOfElement, 1);
     return this;
   }
 
+  // Read-Only first property to Array
   Object.defineProperty(Array.prototype, 'first', {
     enumerable: false,
     configurable: false,
@@ -27,6 +29,7 @@
     }
   });
 
+  // Read-Only last property to Array
   Object.defineProperty(Array.prototype, 'last', {
     enumerable: false,
     configurable: false,
@@ -90,8 +93,12 @@
     });
   }
 
-  /** Return version of the script */
-  gQ.version = () => version;
+  // Define a version properties for qQ (Read-only property)
+  Object.defineProperty(gQ, 'version', {
+    enumerable: false,
+    configurable: false,
+    get: () => version
+  })
 
   gQ.whenSomethingIn = (statement, callback) => {
     if (statement) callback();
