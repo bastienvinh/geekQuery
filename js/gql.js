@@ -2,14 +2,11 @@
 //     com.strife = com.strife || {};
 
 (function (scope, overwrite = false) {
+
   let version = 1.0003;
   let doc = scope.document;
   var q;
-  var scriptQueues = new Array();
-  var loadQueues = new Array();
-
-  // Constructor
-  let gQ = (selector, context = doc) => q.query(selector, context);
+  var scriptRegistry = new Array();
 
   // Array extensions
   // Remove the current Value in array
@@ -51,7 +48,14 @@
     get: function() {
       return this.length > 0;
     }
-  })
+  });
+
+
+
+  // Constructor
+  let gQ = (selector, context = doc) => {
+    return q.query(selector, context);
+  }
 
   gQ.uniqueId = (prefix = '') => {
     let now  = new Date();
@@ -73,21 +77,21 @@
         js.dataset['identifier'] = id;
 
     if (callback) {
-      js.onload = callback;
+      // js.onload = callback;
       js.onload = function() {
-        scriptQueues.removeValue(id);
+        scriptRegistry.removeValue(id);
         callback();
       }
     }
 
     // That will place our scripts in the queues
-    scriptQueues.push(id);
+    scriptRegistry.push(id);
     doc.body.insertBefore(js, doc.body.firstChild);
   }
 
   gQ.ready = (fun) => {
     function waitingReady() {
-      if (scriptQueues.hasItems)
+      if (scriptRegistry.hasItems)
         setTimeout(waitingReady, 1);
       else
         fun();
@@ -140,54 +144,90 @@
     // TODO : create a event binding
   }
 
+  // Convert into array
+  // TODO : that's really bad, it's not using the single responsibility principle
+  gQ.toArray = (item) => {
+    var result = new Array();
+    if (!item.length)
+      return item;
+
+    item.forEach((el) => {
+      result.push(el); 
+    });
+
+    return result;
+  }
+
   class NativeQuery {
-    query(selector, context = doc) {
-      return context.querySelectorAll.call(context, selector);
+    
+    constructor(context = doc) {
+      this.context = context;
+    }
+    query(selector, context = this.context) {
+      return new NativeQuery(gQ.toArray(context.querySelectorAll.call(context, selector)));
+    }
+
+    text(value = null) {
+      let innerText = (this.context[0].innerText === undefined) ? 'textContent' : 'innerText';
+      if (!value)
+        return this.context[0][innerText];
+      
+      this.context[0][innerText] = value;
     }
   }
 
-  class SizzleAdapter {
-    constructor(lib) {
+  class SizzleAdapter extends NativeQuery {
+
+    constructor(lib, context = doc) {
+      super(context)
       this.lib = lib;
     }
+
     query(selector, context = doc) {
-      return this.lib(selector, context);
+      return new SizzleAdapter(this.lib, gQ.toArray(this.lib(selector, context)));
     }
   }
 
-
-  class JQueryAdapter {
-    constructor(lib) {
+  class JQueryAdapter extends NativeQuery {
+    constructor(lib, context = doc) {
+      super(context);
       this.lib = lib;
+      this.context = context;
+      this.target = lib(context);
     }
-    query(selector, context = doc) {
-      return this.lib(selector, context).get();
+
+    query(selector, context = this.context) {
+      return new JQueryAdapter(this.lib, gQ.toArray(this.lib(selector, context).get()));
+    }
+
+    text() {
+      return this.target.text();
     }
   }
 
   gQ.ready( () => {
-    q = new NativeQuery();
+    q = new NativeQuery(doc);
 
     gQ.start();
 
-    if (isNot(q && q.query && q.query('html:first-of-type'))) {
-      if ('jQuery' in scope) {
+    if (isNot(false && q && q.query && q.query('html:first-of-type'))) {
+      if (true && 'jQuery' in scope) {
         gQ.loadJs('js/jquery.min.js', () => {
-          q = new JQueryAdapter(jQuery);
+          q = new JQueryAdapter(jQuery, doc);
         });  
       } 
       else {
         gQ.loadJs('js/sizzle.min.js', () => {
-          q = new SizzleAdapter(Sizzle);
+          q = new SizzleAdapter(Sizzle, doc);
         });
       }
     };
   });
 
-  
-
 } (window, true));
 
 gQ.ready(() => {
-  console.log(gQ('article', document.getElementsByClassName('articles')[0]));
+  let elements = [4, 45, 32, 43, 234, 2];
+  let test = gQ('article');
+  console.log(test);
 });
