@@ -50,8 +50,6 @@
     }
   });
 
-
-
   // Constructor
   let gQ = (selector, context = doc) => {
     return q.query(selector, context);
@@ -158,31 +156,55 @@
     return result;
   }
 
-  class NativeQuery {
-    
-    constructor(context = doc) {
-      this.context = context;
-    }
-    query(selector, context = this.context) {
-      return new NativeQuery(gQ.toArray(context.querySelectorAll.call(context, selector)));
+  class QueryFacade {
+    constructor(adapter) {
+      this.adapter = adapter;
     }
 
-    text(value = null) {
+    create(adapter, lib, context) {
+
+    }
+
+    query(selector, context) {
+      return new QueryFacade(this.adapter.query(selector, context));
+    }
+
+    text(value) {
+      this.adapter.text(value);
+    }
+  }
+
+  class NativeQuery {
+    
+    constructor(lib, context = doc) {
+      this.lib = lib;
+      this.context = context;
+    }
+
+    // Private Methods
+    _getText() {
       let innerText = (this.context[0].innerText === undefined) ? 'textContent' : 'innerText';
-      if (!value)
-        return this.context[0][innerText];
-      
-      this.context[0][innerText] = value;
+      return this.context.reduce( (result, value) => `${result}${value[innerText]}`, "");
+    }
+
+    _setText(value) {
+      let innerText = (this.context[0].innerText === undefined) ? 'textContent' : 'innerText';
+      this.context.forEach( (el) => { el[innerText] = value; });
+      return value;
+    }
+
+    // Public methods
+
+    query(selector, context = this.context) {
+      return new NativeQuery(this.lib, gQ.toArray(context.querySelectorAll.call(context, selector)));
+    }
+
+    text(value) {
+      return (value) ? this._setText(value) : this._getText();
     }
   }
 
   class SizzleAdapter extends NativeQuery {
-
-    constructor(lib, context = doc) {
-      super(context)
-      this.lib = lib;
-    }
-
     query(selector, context = doc) {
       return new SizzleAdapter(this.lib, gQ.toArray(this.lib(selector, context)));
     }
@@ -190,18 +212,12 @@
 
   class JQueryAdapter extends NativeQuery {
     constructor(lib, context = doc) {
-      super(context);
-      this.lib = lib;
-      this.context = context;
+      super(lib, context);
       this.target = lib(context);
     }
 
     query(selector, context = this.context) {
       return new JQueryAdapter(this.lib, gQ.toArray(this.lib(selector, context).get()));
-    }
-
-    text() {
-      return this.target.text();
     }
   }
 
@@ -229,5 +245,5 @@
 gQ.ready(() => {
   let elements = [4, 45, 32, 43, 234, 2];
   let test = gQ('article');
-  console.log(test);
+  console.log(test.text('elise'));
 });
