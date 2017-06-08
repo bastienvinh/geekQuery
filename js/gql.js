@@ -1,9 +1,102 @@
 // var com = com || {};
 //     com.strife = com.strife || {};
+'use strict';
+
+
+(function (scope, overwrite = false) {
+  let version = 1.0005;
+
+  class is {
+    constructor() {
+      throw new Error('Can\t instanciate instance. This is an utilities class.');
+    }
+
+    static function(obj) {
+      return !!(obj && obj.constructor && obj.call && obj.apply);
+    }
+
+    static get version() {
+      return version;
+    }
+  }
+
+  // helper function which extracts params from arguments
+  function getParams(args) {
+    var params = slice.call(args);
+    var length = params.length;
+    if (length === 1 && is.array(params[0])) {
+      params = params[0];
+    }
+    return params;
+  }
+
+  // helper function which reverses the sense of predicate result
+  function not(func) {
+    return function () {
+      return !func.apply(null, slice.call(arguments));
+    };
+  }
+
+  // helper function which call predicate function per parameter and return true if all pass
+  function all(func) {
+    return function () {
+      var params = getParams(arguments);
+      var length = params.length;
+      for (var i = 0; i < length; i++) {
+        if (!func.call(null, params[i])) {
+          return false;
+        }
+      }
+
+      return true;
+    };
+  }
+
+  // helper function which call predicate function per parameter and return true if any pass
+  function any(func) {
+    return function () {
+      var params = getParams(arguments);
+      var length = params.length;
+      for (var i = 0; i < length; i++) {
+        if (func.call(null, params[i])) {
+          return true;
+        }
+      }
+      return false;
+    };
+  }
+
+  // TODO : improve the wirting here
+  function setInterfaces() {
+    var options = is;
+    for (var option in options) {
+      if (hasOwnProperty.call(options, option) && is['function'](options[option])) {
+        var interfaces = options[option].api || ['not', 'all', 'any'];
+        for (var i = 0; i < interfaces.length; i++) {
+          if (interfaces[i] === 'not') {
+            is.not[option] = not(is[option]);
+          }
+          else if (interfaces[i] === 'all') {
+            is.all[option] = all(is[option]);
+          }
+          else if (interfaces[i] === 'any') {
+            is.any[option] = any(is[option]);
+          }
+        }
+      }
+    }
+  }
+  setInterfaces();
+
+  if (!scope.is || (overwrite && scope.is.version && scope.is.version < version)) {
+    scope.is = is;
+  }
+
+}(window));
 
 (function (scope, overwrite = false) {
 
-  let version = 1.0003;
+  let version = 1.0005;
   let doc = scope.document;
   var q;
   var scriptRegistry = new Array();
@@ -20,7 +113,7 @@
   Object.defineProperty(Array.prototype, 'first', {
     enumerable: false,
     configurable: false,
-    get: function() {
+    get: function () {
       return this[0];
     }
   });
@@ -29,7 +122,7 @@
   Object.defineProperty(Array.prototype, 'last', {
     enumerable: false,
     configurable: false,
-    get: function() {
+    get: function () {
       return this[this.length - 1];
     }
   });
@@ -37,7 +130,7 @@
   Object.defineProperty(Array.prototype, 'isEmpty', {
     enumerable: false,
     configurable: false,
-    get: function() {
+    get: function () {
       return this.length === 0;
     }
   });
@@ -45,7 +138,7 @@
   Object.defineProperty(Array.prototype, 'hasItems', {
     enumerable: false,
     configurable: false,
-    get: function() {
+    get: function () {
       return this.length > 0;
     }
   });
@@ -56,7 +149,7 @@
   }
 
   gQ.uniqueId = (prefix = '') => {
-    let now  = new Date();
+    let now = new Date();
     let months = now.getUTCMonth() < 10 ? `0${now.getUTCMonth()}` : now.geMonth().toString();
     let day = now.getDay() < 10 ? `0${now.getDay()}` : now.getDay().toString();
     let seconds = now.getSeconds();
@@ -68,15 +161,15 @@
   gQ.loadJs = (path, callback) => {
     let id = gQ.uniqueId('script-');
     let js = doc.createElement('script');
-        js.src = path;
-        js.type = 'text/javascript';
-        js.defer = true;
-        js.onload = js.onreadystatechange = null;
-        js.dataset['identifier'] = id;
+    js.src = path;
+    js.type = 'text/javascript';
+    js.defer = true;
+    js.onload = js.onreadystatechange = null;
+    js.dataset['identifier'] = id;
 
     if (callback) {
       // js.onload = callback;
-      js.onload = function() {
+      js.onload = function () {
         scriptRegistry.removeValue(id);
         callback();
       }
@@ -103,7 +196,7 @@
     enumerable: false,
     configurable: false,
     get: () => version
-  })
+  });
 
   gQ.whenSomethingIn = (statement, callback) => {
     if (statement) callback();
@@ -121,6 +214,50 @@
   window.whenSomethingIn = gQ.whenSomethingIn;
   window.whenSomethingNotIn = gQ.whenSomethingNotIn;
 
+  gQ.execute = function () {
+
+  }
+
+  gQ.execute('toto', 'mimi');
+
+  class QueryFacade {
+    constructor(adapter) {
+      this.adapter = adapter;
+    }
+
+    query(selector, context) {
+      return this.adapter.query(selector, context);
+    }
+
+    text(value) {
+      return this.adapter.text(value);
+    }
+
+    static create(adapter, lib, context) {
+      return new QueryFacade(new adapter(lib, context));
+    }
+
+    get dom() {
+      return this.lib.context;
+    }
+  }
+
+  /***********  Declaration Ticker ***********/
+  var __instanceTicker;
+  var _uniqSymbolInstanceTicker = Symbol('Ticker');
+  class Ticker {
+    constructor(symbol = null) {
+      if (_uniqSymbolInstanceTicker != symbol)
+        throw new Error('Forbidden new instance. Use Ticker.instance please.');
+    }
+
+    static get instance() {
+      if (!__instanceTicker) __instanceTicker = new Ticker(_uniqSymbolInstanceTicker);
+      return __instanceTicker;
+    }
+  }
+  /***********  End Declaration Ticker ***********/
+
   let canSupportBrowserVersion = () => {
     // TODO : browser version sniffing
     return true;
@@ -133,7 +270,7 @@
 
   // Don't need to throw error
   // Load the code once or overwrite old version
-  if (!scope.gQ || (overwrite && scope.gQ.version && scope.gQ.version() < version)) {
+  if (!scope.gQ || (overwrite && scope.gQ.version && scope.gQ.version < version)) {
     scope.gQ = gQ;
   }
 
@@ -150,32 +287,14 @@
       return item;
 
     item.forEach((el) => {
-      result.push(el); 
+      result.push(el);
     });
 
     return result;
   }
 
-  class QueryFacade {
-    constructor(adapter) {
-      this.adapter = adapter;
-    }
-
-    create(adapter, lib, context) {
-
-    }
-
-    query(selector, context) {
-      return new QueryFacade(this.adapter.query(selector, context));
-    }
-
-    text(value) {
-      this.adapter.text(value);
-    }
-  }
-
   class NativeQuery {
-    
+
     constructor(lib, context = doc) {
       this.lib = lib;
       this.context = context;
@@ -184,12 +303,12 @@
     // Private Methods
     _getText() {
       let innerText = (this.context[0].innerText === undefined) ? 'textContent' : 'innerText';
-      return this.context.reduce( (result, value) => `${result}${value[innerText]}`, "");
+      return this.context.reduce((result, value) => `${result}${value[innerText]}`, "");
     }
 
     _setText(value) {
       let innerText = (this.context[0].innerText === undefined) ? 'textContent' : 'innerText';
-      this.context.forEach( (el) => { el[innerText] = value; });
+      this.context.forEach((el) => { el[innerText] = value; });
       return value;
     }
 
@@ -221,26 +340,25 @@
     }
   }
 
-  gQ.ready( () => {
-    q = new NativeQuery(doc);
+  gQ.ready(() => {
+    // q = new NativeQuery(doc);
+    q = QueryFacade.create(NativeQuery, null, doc);
 
     gQ.start();
 
     if (isNot(false && q && q.query && q.query('html:first-of-type'))) {
       if (true && 'jQuery' in scope) {
-        gQ.loadJs('js/jquery.min.js', () => {
-          q = new JQueryAdapter(jQuery, doc);
-        });  
-      } 
+        q = QueryFacade.create(JQueryAdapter, jQuery, doc);
+      }
       else {
         gQ.loadJs('js/sizzle.min.js', () => {
-          q = new SizzleAdapter(Sizzle, doc);
+          q = QueryFacade.create(SizzleAdapter, Sizzle, doc);
         });
       }
     };
   });
 
-} (window, true));
+}(window, true));
 
 gQ.ready(() => {
   let elements = [4, 45, 32, 43, 234, 2];
