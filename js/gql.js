@@ -90,6 +90,9 @@
 
   if (!scope.is || (overwrite && scope.is.version && scope.is.version < version)) {
     scope.is = is;
+    scope.not = not;
+    scope.all = all;
+    scope.any = any;
   }
 
 }(window));
@@ -206,17 +209,14 @@
     if (!statement) callback();
   }
 
-  gQ.isNot = (statement) => !(statement);
-
-  // Rewrite code diretly to windows to be more clear
-  // TODO : manage case windows is not the root
-  window.isNot = gQ.isNot;
-  window.whenSomethingIn = gQ.whenSomethingIn;
-  window.whenSomethingNotIn = gQ.whenSomethingNotIn;
-
   gQ.execute = function () {
 
   }
+
+  // Rewrite code diretly to windows to be more clear
+  // TODO : manage case windows is not the root
+  window.whenSomethingIn = gQ.whenSomethingIn;
+  window.whenSomethingNotIn = gQ.whenSomethingNotIn;
 
   gQ.execute('toto', 'mimi');
 
@@ -346,7 +346,7 @@
 
     gQ.start();
 
-    if (isNot(false && q && q.query && q.query('html:first-of-type'))) {
+    if (not(false && q && q.query && q.query('html:first-of-type'))) {
       if (true && 'jQuery' in scope) {
         q = QueryFacade.create(JQueryAdapter, jQuery, doc);
       }
