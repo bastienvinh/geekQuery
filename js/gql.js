@@ -2,7 +2,6 @@
 //     com.strife = com.strife || {};
 'use strict';
 
-
 (function (scope, overwrite = false) {
   let version = 1.0005;
 
@@ -15,6 +14,10 @@
       return !!(obj && obj.constructor && obj.call && obj.apply);
     }
 
+    static array(value) {
+      return Array.isArray(value);
+    }
+
     static get version() {
       return version;
     }
@@ -22,8 +25,8 @@
 
   // helper function which extracts params from arguments
   function getParams(args) {
-    var params = slice.call(args);
-    var length = params.length;
+    let params = [...args];
+    let length = params.length;
     if (length === 1 && is.array(params[0])) {
       params = params[0];
     }
@@ -33,16 +36,16 @@
   // helper function which reverses the sense of predicate result
   function not(func) {
     return function () {
-      return !func.apply(null, slice.call(arguments));
+      return !func.apply(null, ...arguments);
     };
   }
 
   // helper function which call predicate function per parameter and return true if all pass
   function all(func) {
     return function () {
-      var params = getParams(arguments);
-      var length = params.length;
-      for (var i = 0; i < length; i++) {
+      let params = getParams(arguments);
+      let length = params.length;
+      for (let i = 0; i < length; i++) {
         if (!func.call(null, params[i])) {
           return false;
         }
@@ -55,9 +58,9 @@
   // helper function which call predicate function per parameter and return true if any pass
   function any(func) {
     return function () {
-      var params = getParams(arguments);
-      var length = params.length;
-      for (var i = 0; i < length; i++) {
+      let params = getParams(arguments);
+      let length = params.length;
+      for (let i = 0; i < length; i++) {
         if (func.call(null, params[i])) {
           return true;
         }
@@ -68,23 +71,14 @@
 
   // TODO : improve the wirting here
   function setInterfaces() {
-    var options = is;
-    for (var option in options) {
-      if (hasOwnProperty.call(options, option) && is['function'](options[option])) {
-        var interfaces = options[option].api || ['not', 'all', 'any'];
-        for (var i = 0; i < interfaces.length; i++) {
-          if (interfaces[i] === 'not') {
-            is.not[option] = not(is[option]);
-          }
-          else if (interfaces[i] === 'all') {
-            is.all[option] = all(is[option]);
-          }
-          else if (interfaces[i] === 'any') {
-            is.any[option] = any(is[option]);
-          }
-        }
-      }
-    }
+    // TODO : improve it when ES7 will be released
+    let options = ['array', 'function'];
+    is.not = is.all = is.any = {};
+    options.forEach((option) => {
+      is.not[option] = not(is[option]);
+      is.all[option] = all(is[option]);
+      is.any[option] = any(is[option]);
+    });
   }
   setInterfaces();
 
@@ -96,6 +90,44 @@
   }
 
 }(window));
+
+(function (scope, overwrite = false) {
+  let version = 1.0005;
+  class CallbackExecute {
+    constructor(func) {
+      if (!is.function(func))
+        throw new Error('this is not a function');
+
+      this.func = func;
+      this.arguments = [];
+    }
+
+    static get version() {
+      return version;
+    }
+
+    with() {
+      this.arguments = [...arguments];
+      return this;
+    }
+
+    if (statements) {
+      if (!!(statements) === true && this.func != null) {
+        console.log(this.arguments);
+        this.func.call(null, ...this.arguments);
+      }
+    }
+
+    ifNot(statements) {
+      if (!!!(statements) === true && this.func != null) {
+        this.func.call(null, ...this.arguments);
+      }
+    }
+  }
+
+  scope.execute = (func) => new CallbackExecute(func);
+
+} (window));
 
 (function (scope, overwrite = false) {
 
@@ -200,25 +232,6 @@
     configurable: false,
     get: () => version
   });
-
-  gQ.whenSomethingIn = (statement, callback) => {
-    if (statement) callback();
-  }
-
-  gQ.whenSomethingNotIn = (statement, callback) => {
-    if (!statement) callback();
-  }
-
-  gQ.execute = function () {
-
-  }
-
-  // Rewrite code diretly to windows to be more clear
-  // TODO : manage case windows is not the root
-  window.whenSomethingIn = gQ.whenSomethingIn;
-  window.whenSomethingNotIn = gQ.whenSomethingNotIn;
-
-  gQ.execute('toto', 'mimi');
 
   class QueryFacade {
     constructor(adapter) {
@@ -346,7 +359,8 @@
 
     gQ.start();
 
-    if (not(false && q && q.query && q.query('html:first-of-type'))) {
+    // TODO : modify to be readable
+    if (!(false && q && q.query && q.query('html:first-of-type'))) {
       if (true && 'jQuery' in scope) {
         q = QueryFacade.create(JQueryAdapter, jQuery, doc);
       }
